@@ -8,8 +8,11 @@ TABLE_DIR = os.path.join(__file__.split("base.py")[0], "tables")
 
 class Kanoodle(object):
     def __init__(self, input_path, nrow):
+        # Input Path
+        self.input_path = input_path
+
         # Data/Parse
-        data = open(input_path, "r").read()
+        data = open(self.input_path, "r").read()
         data = np.array([row.split("\t") for row in data.split("\n")])
 
         # Get Blocks
@@ -23,3 +26,7 @@ class Kanoodle(object):
         self.ncol = (~is_empty).sum() / self.nrow
         assert int(self.ncol) == self.ncol
         self.ncol = int(self.ncol)
+
+        # Row and Column Indices
+        self.row_indices = np.expand_dims(np.arange(self.nrow), (0, 2))
+        self.col_indices = np.expand_dims(np.arange(self.ncol), (0, 1))
