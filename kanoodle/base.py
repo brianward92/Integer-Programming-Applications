@@ -20,6 +20,7 @@ class Kanoodle(object):
         ix = np.where(is_empty.all(axis=1))[0]
         ix = np.insert(ix, 0, -1)
         self.blocks = [data[(i + 1) : j] for i, j in zip(ix[:-1], ix[1:])]
+        self.blocks.append(data[(ix[-1]+1):])
 
         # Get Shape
         self.nrow = nrow
