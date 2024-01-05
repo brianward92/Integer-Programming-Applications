@@ -53,3 +53,83 @@ class Kanoodle(object):
             self.blocks
         )  # per block, x(s) are adjacent
         self.nys = self.nrow * self.ncol  # one y per filled position
+
+    def setup_problem(self):
+        # Compute A01, and A02 in A01@x=y and A02@x=1
+        col_ix = -1
+        x_equals_0 = set()  # can set these to 0 to save optimization variables
+        x_to_move = dict()  # map i from x_i to action
+
+        A01_x_to_y = np.zeros((self.nys, self.nxs))
+        A02_x_eq_1 = np.zeros((len(self.blocks), self.nxs))
+        for b, block in enumerate(self.blocks):
+            for k in range(4):
+                i, j = np.where(np.rot90(block, k) != "")
+                #         i = np.expand_dims(i,(1,2))
+                #         j = np.expand_dims(j,(1,2))
+                #         i = i + self.row_indices + self.col_indices
+                #         j = j + self.row_indices + self.col_indices
+                for di in self.row_indices:
+                    for dj in self.col_indices:
+                        #         for di in self.row_indices[0,:,0]:
+                        #             for dj in self.col_indices[0,0,:]:
+                        col_ix += 1
+                        x_to_move[col_ix] = (b, k, di, dj)
+                        i_ = i + di
+                        j_ = j + dj
+                        ri_ = i_ * self.ncol + j_
+                        for i_0, j_0, row_ix in zip(i_, j_, ri_):
+                            if (i_0 < self.nrow) and (j_0 < self.ncol):
+                                A01_x_to_y[row_ix, col_ix] = 1
+                            else:
+                                x_equals_0.add(col_ix)
+            s = slice(b * self.nxs_per_block, (b + 1) * self.nxs_per_block)
+            A02_x_eq_1[b, s] = 1
+
+        # Compute A03 in A03@x=0 (for x variables that can be pre-opt'd)
+        A03_x_eq_0 = np.zeros((self.nxs, self.nxs))
+        x_equals_0 = sorted(x_equals_0)
+        A03_x_eq_0[x_equals_0, x_equals_0] = 1
+        A03_x_eq_0 = A03_x_eq_0[~(A03_x_eq_0 == 0).all(axis=1), :]
+
+        # Concatenate Constraint Matrix
+        C = np.vstack(
+            [
+                np.hstack(
+                    [
+                        A01_x_to_y,
+                        -np.eye(self.nys),
+                    ]
+                ),
+                np.hstack(
+                    [
+                        A02_x_eq_1,
+                        np.zeros((len(self.blocks), self.nys)),
+                    ]
+                ),
+                np.hstack(
+                    [
+                        A03_x_eq_0,
+                        np.zeros((A03_x_eq_0.shape[0], self.nys)),
+                    ]
+                ),
+                np.hstack(
+                    [
+                        np.zeros((self.nys, self.nxs)),
+                        np.eye(self.nys),
+                    ]
+                ),
+            ]
+        )
+
+        # Construct RHS
+        b = np.vstack(
+            [
+                np.zeros((A01_x_to_y.shape[0], 1)),
+                np.ones((A02_x_eq_1.shape[0], 1)),
+                np.zeros((A03_x_eq_0.shape[0], 1)),
+                np.ones((self.nys, 1)),
+            ]
+        )
+
+        return {"C": C, "b": b, "x_to_move": x_to_move}
