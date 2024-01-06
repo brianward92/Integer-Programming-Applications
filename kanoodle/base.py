@@ -1,7 +1,9 @@
 import itertools
 import os
 
+import cvxpy
 import numpy as np
+import pandas as pd
 
 
 TABLE_DIR = os.path.join(__file__.split("base.py")[0], "tables")
@@ -145,3 +147,27 @@ class Kanoodle(object):
         a[-self.nys :] = 1
 
         return {"a": a, "C": C, "b": b, "x_to_move": x_to_move}
+
+    def solve(self, tol=1e-6, cons=None):
+        # Problem
+        problem_data = self.setup_problem()
+        xy_var = cvxpy.Variable((self.nvars, 1), boolean=True)
+        objf = cvxpy.Maximize(problem_data["a"] @ xy_var)
+        if cons is None:
+            cons = []
+        cons.append(problem_data["C"] @ xy_var == problem_data["b"])
+
+        # Solve
+        prob = cvxpy.Problem(objf, cons)
+        prob.solve(solver="ECOS_BB")
+
+        # Index
+        idx = list(problem_data["x_to_move"].values()) + [
+            ("y", "pos", i, j) for i in range(self.nrow) for j in range(self.ncol)
+        ]
+        idx = pd.MultiIndex.from_tuples(idx)
+
+        # Return
+        xy_var_val = pd.DataFrame(xy_var.value, index=idx)[0].rename(None)
+        xy_var_val = xy_var_val[xy_var_val.abs() > tol]
+        return {"problem_data": problem_data, "solution": xy_var_val}
