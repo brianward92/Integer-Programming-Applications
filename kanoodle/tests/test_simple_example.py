@@ -1,6 +1,6 @@
 import numpy as np
 
-from games.kanoodle.utils import get_simple_example
+from ip_problems.kanoodle.utils import get_simple_example
 
 
 def check_solution(xy, C, b):

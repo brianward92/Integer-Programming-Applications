@@ -1,6 +1,6 @@
 import os
 
-from games.kanoodle import base
+from ip_problems.kanoodle import base
 
 
 def get_simple_example():
