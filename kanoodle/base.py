@@ -81,11 +81,10 @@ class Kanoodle(object):
                         i_ = i + di
                         j_ = j + dj
                         ri_ = i_ * self.ncol + j_
-                        for i_0, j_0, row_ix in zip(i_, j_, ri_):
-                            if (i_0 < self.nrow) and (j_0 < self.ncol):
-                                A01_x_to_y[row_ix, col_ix] = 1
-                            else:
-                                x_equals_0.add(col_ix)
+                        valid_indices = (i_ < self.nrow) & (j_ < self.ncol)
+                        A01_x_to_y[ri_[valid_indices], col_ix] = 1
+                        if (~valid_indices).sum():
+                            x_equals_0.add(col_ix)
                 else:
                     for di, dj in itertools.product(self.row_indices, self.col_indices):
                         # for di, dj in itertools.product(self.row_indices[0,:,0], self.col_indices[0,0,:])
