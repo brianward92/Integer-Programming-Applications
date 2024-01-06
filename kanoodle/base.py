@@ -58,104 +58,119 @@ class Kanoodle(object):
         self.nys = self.nrow * self.ncol  # one y per filled position
         self.nvars = self.nxs + self.nys
 
-    def setup_problem(self):
-        # Compute A01, and A02 in A01@x=y and A02@x=1
-        col_ix = -1
-        x_equals_0 = []  # can set these to 0 to save optimization variables
-        x_to_move = dict()  # map i from x_i to action
+        # Problem Data
+        self.problem_data = None
 
-        A01_x_to_y = np.zeros((self.nys, self.nxs))
-        A02_x_eq_1 = np.zeros((len(self.blocks), self.nxs))
-        for b, block in enumerate(self.blocks):
-            unique_rotations = set()
-            for k in range(4):
-                i, j = np.where(np.rot90(block, k) != "")
-                rotation = "".join(i.astype(str)) + "," + "".join(j.astype(str))
-                if rotation not in unique_rotations:
-                    unique_rotations.add(rotation)
-                    # i = np.expand_dims(i,(1,2))
-                    # j = np.expand_dims(j,(1,2))
-                    # i = i + self.row_indices + self.col_indices
-                    # j = j + self.row_indices + self.col_indices
-                    # for di, dj in itertools.product(self.row_indices[0,:,0], self.col_indices[0,0,:])
-                    for di, dj in itertools.product(self.row_indices, self.col_indices):
-                        col_ix += 1
-                        x_to_move[col_ix] = (b, k, di, dj)
-                        i_ = i + di
-                        j_ = j + dj
-                        ri_ = i_ * self.ncol + j_
-                        valid_indices = (i_ < self.nrow) & (j_ < self.ncol)
-                        A01_x_to_y[ri_[valid_indices], col_ix] = 1
-                        if (~valid_indices).sum():
-                            x_equals_0.append(col_ix)
-                else:
-                    for di, dj in itertools.product(self.row_indices, self.col_indices):
+    def setup_problem(self, force_refresh=False):
+        if (self.problem_data is None) or force_refresh:
+            # Compute A01, and A02 in A01@x=y and A02@x=1
+            col_ix = -1
+            x_equals_0 = []  # can set these to 0 to save optimization variables
+            x_to_move = dict()  # map i from x_i to action
+
+            A01_x_to_y = np.zeros((self.nys, self.nxs))
+            A02_x_eq_1 = np.zeros((len(self.blocks), self.nxs))
+            for b, block in enumerate(self.blocks):
+                unique_rotations = set()
+                for k in range(4):
+                    i, j = np.where(np.rot90(block, k) != "")
+                    rotation = "".join(i.astype(str)) + "," + "".join(j.astype(str))
+                    if rotation not in unique_rotations:
+                        unique_rotations.add(rotation)
+                        # i = np.expand_dims(i,(1,2))
+                        # j = np.expand_dims(j,(1,2))
+                        # i = i + self.row_indices + self.col_indices
+                        # j = j + self.row_indices + self.col_indices
                         # for di, dj in itertools.product(self.row_indices[0,:,0], self.col_indices[0,0,:])
-                        col_ix += 1
-                        x_to_move[col_ix] = (b, k, di, dj)
-                        x_equals_0.append(col_ix)
-            s = slice(b * self.nxs_per_block, (b + 1) * self.nxs_per_block)
-            A02_x_eq_1[b, s] = 1
+                        for di, dj in itertools.product(
+                            self.row_indices, self.col_indices
+                        ):
+                            col_ix += 1
+                            x_to_move[col_ix] = (b, k, di, dj)
+                            i_ = i + di
+                            j_ = j + dj
+                            ri_ = i_ * self.ncol + j_
+                            valid_indices = (i_ < self.nrow) & (j_ < self.ncol)
+                            A01_x_to_y[ri_[valid_indices], col_ix] = 1
+                            if (~valid_indices).sum():
+                                x_equals_0.append(col_ix)
+                    else:
+                        for di, dj in itertools.product(
+                            self.row_indices, self.col_indices
+                        ):
+                            # for di, dj in itertools.product(self.row_indices[0,:,0], self.col_indices[0,0,:])
+                            col_ix += 1
+                            x_to_move[col_ix] = (b, k, di, dj)
+                            x_equals_0.append(col_ix)
+                s = slice(b * self.nxs_per_block, (b + 1) * self.nxs_per_block)
+                A02_x_eq_1[b, s] = 1
 
-        # Compute A03 in A03@x=0 (for x variables that can be pre-opt'd)
-        A03_x_eq_0 = np.zeros((self.nxs, self.nxs))
-        A03_x_eq_0[x_equals_0, x_equals_0] = 1
-        A03_x_eq_0 = A03_x_eq_0[~(A03_x_eq_0 == 0).all(axis=1), :]
+            # Compute A03 in A03@x=0 (for x variables that can be pre-opt'd)
+            A03_x_eq_0 = np.zeros((self.nxs, self.nxs))
+            A03_x_eq_0[x_equals_0, x_equals_0] = 1
+            A03_x_eq_0 = A03_x_eq_0[~(A03_x_eq_0 == 0).all(axis=1), :]
 
-        # Concatenate Constraint Matrix
-        C = np.vstack(
-            [
-                np.hstack(
-                    [
-                        A01_x_to_y,
-                        -np.eye(self.nys),
-                    ]
-                ),
-                np.hstack(
-                    [
-                        A02_x_eq_1,
-                        np.zeros((len(self.blocks), self.nys)),
-                    ]
-                ),
-                np.hstack(
-                    [
-                        A03_x_eq_0,
-                        np.zeros((A03_x_eq_0.shape[0], self.nys)),
-                    ]
-                ),
-                np.hstack(
-                    [
-                        np.zeros((self.nys, self.nxs)),
-                        np.eye(self.nys),
-                    ]
-                ),
-            ]
-        )
+            # Concatenate Constraint Matrix
+            C = np.vstack(
+                [
+                    np.hstack(
+                        [
+                            A01_x_to_y,
+                            -np.eye(self.nys),
+                        ]
+                    ),
+                    np.hstack(
+                        [
+                            A02_x_eq_1,
+                            np.zeros((len(self.blocks), self.nys)),
+                        ]
+                    ),
+                    np.hstack(
+                        [
+                            A03_x_eq_0,
+                            np.zeros((A03_x_eq_0.shape[0], self.nys)),
+                        ]
+                    ),
+                    np.hstack(
+                        [
+                            np.zeros((self.nys, self.nxs)),
+                            np.eye(self.nys),
+                        ]
+                    ),
+                ]
+            )
 
-        # Construct RHS
-        b = np.vstack(
-            [
-                np.zeros((A01_x_to_y.shape[0], 1)),
-                np.ones((A02_x_eq_1.shape[0], 1)),
-                np.zeros((A03_x_eq_0.shape[0], 1)),
-                np.ones((self.nys, 1)),
-            ]
-        )
+            # Construct RHS
+            b = np.vstack(
+                [
+                    np.zeros((A01_x_to_y.shape[0], 1)),
+                    np.ones((A02_x_eq_1.shape[0], 1)),
+                    np.zeros((A03_x_eq_0.shape[0], 1)),
+                    np.ones((self.nys, 1)),
+                ]
+            )
 
-        # Construct Objective Function Coefficient
-        a = np.zeros(self.nvars)
-        a[-self.nys :] = 1
+            # Construct Objective Function Coefficient
+            a = np.zeros(self.nvars)
+            a[-self.nys :] = 1
 
-        return {"a": a, "C": C, "b": b, "x_to_move": x_to_move}
+            self.problem_data = {
+                "a": a,
+                "C": C,
+                "b": b,
+                "x_to_move": x_to_move,
+                "xy_var": cvxpy.Variable((self.nvars, 1), boolean=True),
+            }
 
-    def solve(self, tol=1e-6, cons=None):
+        return self.problem_data
+
+    def solve(self, tol=1e-6, cons=None, force_refresh=True):
         # Problem
-        problem_data = self.setup_problem()
-        xy_var = cvxpy.Variable((self.nvars, 1), boolean=True)
-        objf = cvxpy.Maximize(problem_data["a"] @ xy_var)
+        problem_data = self.setup_problem(force_refresh)
+        objf = cvxpy.Maximize(problem_data["a"] @ problem_data["xy_var"])
         if cons is None:
             cons = []
-        cons.append(problem_data["C"] @ xy_var == problem_data["b"])
+        cons.append(problem_data["C"] @ problem_data["xy_var"] == problem_data["b"])
 
         # Solve
         prob = cvxpy.Problem(objf, cons)
@@ -168,6 +183,18 @@ class Kanoodle(object):
         idx = pd.MultiIndex.from_tuples(idx)
 
         # Return
-        xy_var_val = pd.DataFrame(xy_var.value, index=idx)[0].rename(None)
+        xy_var_val = pd.DataFrame(problem_data["xy_var"].value, index=idx)[0].rename(
+            None
+        )
         xy_var_val = xy_var_val[xy_var_val.abs() > tol]
         return {"problem_data": problem_data, "solution": xy_var_val}
+
+    def show_solution(self, res):
+        filled = np.empty((self.nrow, self.ncol), dtype=str)
+        for b, r, i, j in res["solution"].drop("y").index:
+            block = np.rot90(self.blocks[b], r)
+            n, m = block.shape
+            filled[slice(i, i + n), slice(j, j + m)] = np.core.defchararray.add(
+                filled[slice(i, i + n), slice(j, j + m)], block
+            )
+        return filled
