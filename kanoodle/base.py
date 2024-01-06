@@ -54,6 +54,7 @@ class Kanoodle(object):
             self.blocks
         )  # per block, x(s) are adjacent
         self.nys = self.nrow * self.ncol  # one y per filled position
+        self.nvars = self.nxs + self.nys
 
     def setup_problem(self):
         # Compute A01, and A02 in A01@x=y and A02@x=1
@@ -139,4 +140,8 @@ class Kanoodle(object):
             ]
         )
 
-        return {"C": C, "b": b, "x_to_move": x_to_move}
+        # Construct Objective Function Coefficient
+        a = np.zeros(self.nvars)
+        a[-self.nys :] = 1
+
+        return {"a": a, "C": C, "b": b, "x_to_move": x_to_move}
