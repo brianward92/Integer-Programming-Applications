@@ -58,7 +58,7 @@ class Kanoodle(object):
     def setup_problem(self):
         # Compute A01, and A02 in A01@x=y and A02@x=1
         col_ix = -1
-        x_equals_0 = set()  # can set these to 0 to save optimization variables
+        x_equals_0 = []  # can set these to 0 to save optimization variables
         x_to_move = dict()  # map i from x_i to action
 
         A01_x_to_y = np.zeros((self.nys, self.nxs))
@@ -84,19 +84,18 @@ class Kanoodle(object):
                         valid_indices = (i_ < self.nrow) & (j_ < self.ncol)
                         A01_x_to_y[ri_[valid_indices], col_ix] = 1
                         if (~valid_indices).sum():
-                            x_equals_0.add(col_ix)
+                            x_equals_0.append(col_ix)
                 else:
                     for di, dj in itertools.product(self.row_indices, self.col_indices):
                         # for di, dj in itertools.product(self.row_indices[0,:,0], self.col_indices[0,0,:])
                         col_ix += 1
                         x_to_move[col_ix] = (b, k, di, dj)
-                        x_equals_0.add(col_ix)
+                        x_equals_0.append(col_ix)
             s = slice(b * self.nxs_per_block, (b + 1) * self.nxs_per_block)
             A02_x_eq_1[b, s] = 1
 
         # Compute A03 in A03@x=0 (for x variables that can be pre-opt'd)
         A03_x_eq_0 = np.zeros((self.nxs, self.nxs))
-        x_equals_0 = sorted(x_equals_0)
         A03_x_eq_0[x_equals_0, x_equals_0] = 1
         A03_x_eq_0 = A03_x_eq_0[~(A03_x_eq_0 == 0).all(axis=1), :]
 
