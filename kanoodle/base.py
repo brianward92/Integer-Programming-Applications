@@ -66,7 +66,7 @@ class Kanoodle(object):
             unique_rotations = set()
             for k in range(4):
                 i, j = np.where(np.rot90(block, k) != "")
-                rotation = ''.join(i.astype(str)) + "," + ''.join(j.astype(str))
+                rotation = "".join(i.astype(str)) + "," + "".join(j.astype(str))
                 if rotation not in unique_rotations:
                     unique_rotations.add(rotation)
                     #         i = np.expand_dims(i,(1,2))
