@@ -1,3 +1,4 @@
+import itertools
 import os
 
 import numpy as np
@@ -29,18 +30,18 @@ class Kanoodle(object):
         self.ncol = int(self.ncol)
 
         # Row and Column Indices
-        #         self.row_indices = np.expand_dims(np.arange(self.nrow), (0, 2))
-        #         self.col_indices = np.expand_dims(np.arange(self.ncol), (0, 1))
+        # self.row_indices = np.expand_dims(np.arange(self.nrow), (0, 2))
+        # self.col_indices = np.expand_dims(np.arange(self.ncol), (0, 1))
         self.row_indices = np.arange(self.nrow)
         self.col_indices = np.arange(self.ncol)
 
         # Variable Counts
-        #         self.nxs = np.prod([           # one x per combination of
-        #             len(self.blocks),          # block
-        #             4,                         # rotation
-        #             self.row_indices.shape[1], # row position
-        #             self.col_indices.shape[2], # column position
-        #         ])
+        # self.nxs = np.prod([           # one x per combination of
+        #     len(self.blocks),          # block
+        #     4,                         # rotation
+        #     self.row_indices.shape[1], # row position
+        #     self.col_indices.shape[2], # column position
+        # ])
         self.nxs = np.prod(
             [  # one x per combination of
                 len(self.blocks),  # block
@@ -69,32 +70,28 @@ class Kanoodle(object):
                 rotation = "".join(i.astype(str)) + "," + "".join(j.astype(str))
                 if rotation not in unique_rotations:
                     unique_rotations.add(rotation)
-                    #         i = np.expand_dims(i,(1,2))
-                    #         j = np.expand_dims(j,(1,2))
-                    #         i = i + self.row_indices + self.col_indices
-                    #         j = j + self.row_indices + self.col_indices
-                    for di in self.row_indices:
-                        for dj in self.col_indices:
-                            #         for di in self.row_indices[0,:,0]:
-                            #             for dj in self.col_indices[0,0,:]:
-                            col_ix += 1
-                            x_to_move[col_ix] = (b, k, di, dj)
-                            i_ = i + di
-                            j_ = j + dj
-                            ri_ = i_ * self.ncol + j_
-                            for i_0, j_0, row_ix in zip(i_, j_, ri_):
-                                if (i_0 < self.nrow) and (j_0 < self.ncol):
-                                    A01_x_to_y[row_ix, col_ix] = 1
-                                else:
-                                    x_equals_0.add(col_ix)
+                    # i = np.expand_dims(i,(1,2))
+                    # j = np.expand_dims(j,(1,2))
+                    # i = i + self.row_indices + self.col_indices
+                    # j = j + self.row_indices + self.col_indices
+                    # for di, dj in itertools.product(self.row_indices[0,:,0], self.col_indices[0,0,:])
+                    for di, dj in itertools.product(self.row_indices, self.col_indices):
+                        col_ix += 1
+                        x_to_move[col_ix] = (b, k, di, dj)
+                        i_ = i + di
+                        j_ = j + dj
+                        ri_ = i_ * self.ncol + j_
+                        for i_0, j_0, row_ix in zip(i_, j_, ri_):
+                            if (i_0 < self.nrow) and (j_0 < self.ncol):
+                                A01_x_to_y[row_ix, col_ix] = 1
+                            else:
+                                x_equals_0.add(col_ix)
                 else:
-                    for di in self.row_indices:
-                        for dj in self.col_indices:
-                            #         for di in self.row_indices[0,:,0]:
-                            #             for dj in self.col_indices[0,0,:]:
-                            col_ix += 1
-                            x_to_move[col_ix] = (b, k, di, dj)
-                            x_equals_0.add(col_ix)
+                    for di, dj in itertools.product(self.row_indices, self.col_indices):
+                        # for di, dj in itertools.product(self.row_indices[0,:,0], self.col_indices[0,0,:])
+                        col_ix += 1
+                        x_to_move[col_ix] = (b, k, di, dj)
+                        x_equals_0.add(col_ix)
             s = slice(b * self.nxs_per_block, (b + 1) * self.nxs_per_block)
             A02_x_eq_1[b, s] = 1
 
