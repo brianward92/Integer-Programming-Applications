@@ -159,7 +159,6 @@ class Kanoodle(object):
                 "C": C,
                 "b": b,
                 "x_to_move": x_to_move,
-                "xy_var": cvxpy.Variable((self.nvars, 1), boolean=True),
             }
 
         return self.problem_data
@@ -167,10 +166,13 @@ class Kanoodle(object):
     def solve(self, tol=1e-6, cons=None, force_refresh=True):
         # Problem
         problem_data = self.setup_problem(force_refresh)
-        objf = cvxpy.Maximize(problem_data["a"] @ problem_data["xy_var"])
+        xy_var = cvxpy.Variable((self.nvars, 1), boolean=True)
+        objf = cvxpy.Maximize(problem_data["a"] @ xy_var)
         if cons is None:
             cons = []
-        cons.append(problem_data["C"] @ problem_data["xy_var"] == problem_data["b"])
+        else:
+            cons = [lhs @ xy_var == rhs for lhs, rhs in cons]
+        cons.append(problem_data["C"] @ xy_var == problem_data["b"])
 
         # Solve
         prob = cvxpy.Problem(objf, cons)
@@ -183,9 +185,7 @@ class Kanoodle(object):
         idx = pd.MultiIndex.from_tuples(idx)
 
         # Return
-        xy_var_val = pd.DataFrame(problem_data["xy_var"].value, index=idx)[0].rename(
-            None
-        )
+        xy_var_val = pd.DataFrame(xy_var.value, index=idx)[0].rename(None)
         xy_var_val = xy_var_val[xy_var_val.abs() > tol]
         return {"problem_data": problem_data, "solution": xy_var_val}
 
