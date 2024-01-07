@@ -1,0 +1,40 @@
+P	P	P	P
+			
+F	F		
+F	F		
+			
+R	R		
+R	R	R	
+			
+Y	Y		
+	Y		
+Y	Y		
+			
+N	N	N	N
+		N	
+			
+W			
+W	W		
+			
+M	M		
+	M	M	
+		M	
+			
+O			
+O	O	O	
+			
+	B		
+	B		
+	B		
+B	B		
+			
+S	S	S	
+		S	
+		S	
+			
+	E		
+E	E	E	
+	E		
+			
+G	G		
+	G	G	G
