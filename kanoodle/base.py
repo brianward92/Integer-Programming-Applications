@@ -194,7 +194,8 @@ class Kanoodle(object):
         for b, r, i, j in res["solution"].drop("y").index:
             block = np.rot90(self.blocks[b], r)
             n, m = block.shape
+            n_,m_ = filled[slice(i, i + n), slice(j, j + m)].shape
             filled[slice(i, i + n), slice(j, j + m)] = np.core.defchararray.add(
-                filled[slice(i, i + n), slice(j, j + m)], block
+                filled[slice(i, i + n), slice(j, j + m)], block[:n_,:m_]
             )
         return filled
