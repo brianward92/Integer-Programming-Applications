@@ -31,10 +31,10 @@ if __name__ == "__main__":
 
     # Hand-Crafted Solutions
     solutions = [
-        [(0,0,0,0),(1,0,1,0),(2,0,3,0)], # sol'n 1: just push pieces together
-        [(0,0,1,0),(1,0,2,0),(2,0,0,0)], # sol'n 2: same as 1, but put Y at top
-        [(0,2,1,0),(1,2,0,0),(2,0,3,0)], # sol'n 3: same as 1, but flip R/G block upside down
-        [(0,2,2,0),(1,2,1,0),(2,0,0,0)], # sol'n 4: same as 3, but put Y at top
+        [(0,False,0,0,0),(1,False,0,1,0),(2,False,0,3,0)], # sol'n 1: just push pieces together
+        [(0,False,0,1,0),(1,False,0,2,0),(2,False,0,0,0)], # sol'n 2: same as 1, but put Y at top
+        [(0,False,2,1,0),(1,False,2,0,0),(2,False,0,3,0)], # sol'n 3: same as 1, but flip R/G block upside down
+        [(0,False,2,2,0),(1,False,2,1,0),(2,False,0,0,0)], # sol'n 4: same as 3, but put Y at top
     ]
 
     # Check Solutions

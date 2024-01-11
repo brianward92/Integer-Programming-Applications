@@ -40,6 +40,7 @@ class Kanoodle(object):
         # Variable Counts
         # self.nxs = np.prod([           # one x per combination of
         #     len(self.blocks),          # block
+        #     2,                         # flip
         #     4,                         # rotation
         #     self.row_indices.shape[1], # row position
         #     self.col_indices.shape[2], # column position
@@ -47,6 +48,7 @@ class Kanoodle(object):
         self.nxs = np.prod(
             [  # one x per combination of
                 len(self.blocks),  # block
+                2,  # flips
                 4,  # rotation
                 len(self.row_indices),  # row position
                 len(self.col_indices),  # column position
@@ -72,36 +74,40 @@ class Kanoodle(object):
             A02_x_eq_1 = np.zeros((len(self.blocks), self.nxs))
             for b, block in enumerate(self.blocks):
                 unique_fillings = set()
-                for k in range(4):
-                    i, j = np.where(np.rot90(block, k) != "")
-                    rotation = "".join(i.astype(str)) + "," + "".join(j.astype(str))
-                    if rotation not in unique_fillings:
-                        unique_fillings.add(rotation)
-                        # i = np.expand_dims(i,(1,2))
-                        # j = np.expand_dims(j,(1,2))
-                        # i = i + self.row_indices + self.col_indices
-                        # j = j + self.row_indices + self.col_indices
-                        # for di, dj in itertools.product(self.row_indices[0,:,0], self.col_indices[0,0,:])
-                        for di, dj in itertools.product(
-                            self.row_indices, self.col_indices
-                        ):
-                            col_ix += 1
-                            x_to_move[col_ix] = (b, k, di, dj)
-                            i_ = i + di
-                            j_ = j + dj
-                            ri_ = i_ * self.ncol + j_
-                            valid_indices = (i_ < self.nrow) & (j_ < self.ncol)
-                            A01_x_to_y[ri_[valid_indices], col_ix] = 1
-                            if (~valid_indices).sum():
-                                x_equals_0.append(col_ix)
-                    else:
-                        for di, dj in itertools.product(
-                            self.row_indices, self.col_indices
-                        ):
+                for f in [False,True]:
+                    flipper = lambda x: x
+                    if f:
+                        flipper = np.flipud
+                    for k in range(4):
+                        i, j = np.where(np.rot90(flipper(block), k) != "")
+                        rotation = "".join(i.astype(str)) + "," + "".join(j.astype(str))
+                        if rotation not in unique_fillings:
+                            unique_fillings.add(rotation)
+                            # i = np.expand_dims(i,(1,2))
+                            # j = np.expand_dims(j,(1,2))
+                            # i = i + self.row_indices + self.col_indices
+                            # j = j + self.row_indices + self.col_indices
                             # for di, dj in itertools.product(self.row_indices[0,:,0], self.col_indices[0,0,:])
-                            col_ix += 1
-                            x_to_move[col_ix] = (b, k, di, dj)
-                            x_equals_0.append(col_ix)
+                            for di, dj in itertools.product(
+                                self.row_indices, self.col_indices
+                            ):
+                                col_ix += 1
+                                x_to_move[col_ix] = (b, f, k, di, dj)
+                                i_ = i + di
+                                j_ = j + dj
+                                ri_ = i_ * self.ncol + j_
+                                valid_indices = (i_ < self.nrow) & (j_ < self.ncol)
+                                A01_x_to_y[ri_[valid_indices], col_ix] = 1
+                                if (~valid_indices).sum():
+                                    x_equals_0.append(col_ix)
+                        else:
+                            for di, dj in itertools.product(
+                                self.row_indices, self.col_indices
+                            ):
+                                # for di, dj in itertools.product(self.row_indices[0,:,0], self.col_indices[0,0,:])
+                                col_ix += 1
+                                x_to_move[col_ix] = (b, f, k, di, dj)
+                                x_equals_0.append(col_ix)
                 s = slice(b * self.nxs_per_block, (b + 1) * self.nxs_per_block)
                 A02_x_eq_1[b, s] = 1
 
@@ -176,23 +182,30 @@ class Kanoodle(object):
 
         # Solve
         prob = cvxpy.Problem(objf, cons)
-        prob.solve(solver="ECOS_BB")
+        oofv = prob.solve(solver="ECOS_BB")
 
         # Index
         idx = list(problem_data["x_to_move"].values()) + [
-            ("y", "pos", i, j) for i in range(self.nrow) for j in range(self.ncol)
+            ("y", "", "", i, j) for i in range(self.nrow) for j in range(self.ncol)
         ]
         idx = pd.MultiIndex.from_tuples(idx)
 
         # Return
-        xy_var_val = pd.DataFrame(xy_var.value, index=idx)[0].rename(None)
-        xy_var_val = xy_var_val[xy_var_val.abs() > tol]
+        if oofv < 0:
+            xy_var_val = pd.DataFrame(np.nan, index=idx)[0].rename(None)
+            print("Infeasible!")
+        else:
+            xy_var_val = pd.DataFrame(xy_var.value, index=idx)[0].rename(None)
+            xy_var_val = xy_var_val[xy_var_val.abs() > tol]
         return {"problem_data": problem_data, "solution": xy_var_val}
 
     def show_solution(self, res):
         filled = np.empty((self.nrow, self.ncol), dtype=str)
-        for b, r, i, j in res["solution"].drop("y").index:
-            block = np.rot90(self.blocks[b], r)
+        for b, f, r, i, j in res["solution"].drop("y").index:
+            flipper = lambda x: x
+            if f:
+                flipper = np.flipud
+            block = np.rot90(flipper(self.blocks[b]), r)
             n, m = block.shape
             n_,m_ = filled[slice(i, i + n), slice(j, j + m)].shape
             filled[slice(i, i + n), slice(j, j + m)] = np.core.defchararray.add(
