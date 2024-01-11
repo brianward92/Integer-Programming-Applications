@@ -71,12 +71,12 @@ class Kanoodle(object):
             A01_x_to_y = np.zeros((self.nys, self.nxs))
             A02_x_eq_1 = np.zeros((len(self.blocks), self.nxs))
             for b, block in enumerate(self.blocks):
-                unique_rotations = set()
+                unique_fillings = set()
                 for k in range(4):
                     i, j = np.where(np.rot90(block, k) != "")
                     rotation = "".join(i.astype(str)) + "," + "".join(j.astype(str))
-                    if rotation not in unique_rotations:
-                        unique_rotations.add(rotation)
+                    if rotation not in unique_fillings:
+                        unique_fillings.add(rotation)
                         # i = np.expand_dims(i,(1,2))
                         # j = np.expand_dims(j,(1,2))
                         # i = i + self.row_indices + self.col_indices
