@@ -10,6 +10,7 @@ def get_simple_example():
     )
     return k
 
+
 def get_actual_kanoodle():
     k = base.Kanoodle(
         input_path=os.path.join(base.TABLE_DIR, "actual_kanoodle.txt"),

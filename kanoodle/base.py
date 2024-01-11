@@ -74,7 +74,7 @@ class Kanoodle(object):
             A02_x_eq_1 = np.zeros((len(self.blocks), self.nxs))
             for b, block in enumerate(self.blocks):
                 unique_fillings = set()
-                for f in [False,True]:
+                for f in [False, True]:
                     flipper = lambda x: x
                     if f:
                         flipper = np.flipud
@@ -207,8 +207,8 @@ class Kanoodle(object):
                 flipper = np.flipud
             block = np.rot90(flipper(self.blocks[b]), r)
             n, m = block.shape
-            n_,m_ = filled[slice(i, i + n), slice(j, j + m)].shape
+            n_, m_ = filled[slice(i, i + n), slice(j, j + m)].shape
             filled[slice(i, i + n), slice(j, j + m)] = np.core.defchararray.add(
-                filled[slice(i, i + n), slice(j, j + m)], block[:n_,:m_]
+                filled[slice(i, i + n), slice(j, j + m)], block[:n_, :m_]
             )
         return filled
